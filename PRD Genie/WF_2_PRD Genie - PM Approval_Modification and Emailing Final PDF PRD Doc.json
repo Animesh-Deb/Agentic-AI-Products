@@ -1,0 +1,800 @@
+{
+  "name": "PRD Genie - PM Approval/Modification and Emailing Final PDF PRD Doc",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": [
+          "app_mention",
+          "message"
+        ],
+        "channelId": {
+          "__rl": true,
+          "value": "C0BUP1KJ1MM",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        -208
+      ],
+      "id": "eb8375d6-624a-4bc7-bf35-2b4c4a32c947",
+      "name": "Slack Trigger",
+      "webhookId": "ea8a4bfa-d302-4263-9b47-5aa50b5bdbc3",
+      "credentials": {
+        "slackApi": {
+          "id": "bGSXH86Pkn2VXRQy",
+          "name": "Slack account 6"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9d5df8f1-df87-4c9b-9bbc-078c0a0db628",
+              "name": "=pm_response",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "06033ad5-02b2-4f8c-8c57-977699651883",
+              "name": "=thread_ts",
+              "value": "={{ $json.thread_ts }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -688,
+        -208
+      ],
+      "id": "523620fa-a3b7-4bc9-8bb7-d03ce2390ad2",
+      "name": "Extract PM Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = ($json.pm_response || \"\").trim();\nconst upperResponse = response.toUpperCase();\n\nlet decision = \"UNKNOWN\";\nlet instructions = \"\";\n\n// -------------------------\n// APPROVAL\n// -------------------------\nconst approvalPatterns = [\n  /^APPROVE[.!]?$/i,\n  /^APPROVED[.!]?$/i,\n  /^YES[.!]?$/i,\n  /^YES,?\\s*(APPROVE|APPROVED)[.!]?$/i,\n  /^LOOKS GOOD[.!]?$/i,\n  /^LOOKS GOOD,?\\s*(APPROVED|PLEASE PROCEED)?[.!]?$/i,\n  /^LGTM[.!]?$/i,\n  /^GO AHEAD[.!]?$/i,\n  /^PLEASE PROCEED[.!]?$/i,\n  /^NICE[.!]?$/i,\n  /^NICE,?\\s*(WORK|JOB)?[.!]?$/i\n];\n\nif (approvalPatterns.some(pattern => pattern.test(response))) {\n  decision = \"APPROVED\";\n}\n\n// -------------------------\n// REJECTION\n// -------------------------\nelse if (\n  /^REJECT[.!]?$/i.test(response) ||\n  /^REJECTED[.!]?$/i.test(response) ||\n  /^NOT APPROVED[.!]?$/i.test(response)\n) {\n  decision = \"REJECTED\";\n}\n\n// -------------------------\n// MODIFY / CHANGES\n// -------------------------\nelse if (/^MODIFY\\b/i.test(response)) {\n  decision = \"MODIFY\";\n\n  instructions = response\n    .replace(/^MODIFY\\s*:?\\s*/i, \"\")\n    .trim();\n}\n\nelse if (\n  /^MODIFY\\b/i.test(response) ||\n  /^CHANGE\\b/i.test(response) ||\n  /^CHANGES?\\b/i.test(response) ||\n  /^UPDATE\\b/i.test(response) ||\n  /^UPDATES?\\b/i.test(response) ||\n  /^MAKE\\s+CHANGES?\\b/i.test(response) ||\n  /^PLEASE\\s+MAKE\\s+CHANGES?\\b/i.test(response) ||\n  /^NEEDS?\\s+CHANGES?\\b/i.test(response) ||\n  /^I\\s+WANT\\s+CHANGES?\\b/i.test(response) ||\n  /^PLEASE\\s+CHANGE\\b/i.test(response) ||\n  /^PLEASE\\s+UPDATE\\b/i.test(response)\n) {\n  decision = \"MODIFY\";\n  instructions = response\n    .replace(/^(CHANGE|CHANGES|UPDATE|UPDATES)\\s*:?\\s*/i, \"\")\n    .trim();\n}\n\n// -------------------------\n// Return normalized result\n// -------------------------\nreturn [\n  {\n    json: {\n      thread_ts: $json.thread_ts,\n      pm_response: response,\n      decision: decision,\n      modification_instructions: instructions\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        -208
+      ],
+      "id": "a29c6f3b-d1d8-4db1-897f-51be32040390",
+      "name": "Parse PM Decision"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ouonqLFcGeLCteKq",
+          "mode": "list",
+          "cachedResultName": "prd_reviews",
+          "cachedResultUrl": "/projects/mLt36zsGcWAKgjbV/datatables/ouonqLFcGeLCteKq"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slack_thread_ts",
+              "keyValue": "={{ $json.thread_ts }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -240,
+        -208
+      ],
+      "id": "9508329c-6167-4f28-b429-856ca8ca781d",
+      "name": "Find PRD Review",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "30d0c3bf-2c6a-419f-804e-e37bbc3d3960",
+              "leftValue": "={{ $('Parse PM Decision').item.json.decision }}",
+              "rightValue": "APPROVED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -16,
+        -208
+      ],
+      "id": "cf31efae-6aba-4b54-b38b-4cd7683b09a5",
+      "name": "Approval Decision"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prd = $json.prd_json;\n\nreturn [\n  {\n    json: {\n      prd: prd\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -304
+      ],
+      "id": "8dac6eed-ff66-40aa-8814-1b5a8f0a3e06",
+      "name": "Parse Final PRD"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prd = $input.first().json.prd || \"\";\n\n// ------------------------------------\n// HTML escaping\n// ------------------------------------\nfunction escapeHtml(text) {\n  return String(text ?? \"\")\n    .replace(/&/g, \"&amp;\")\n    .replace(/</g, \"&lt;\")\n    .replace(/>/g, \"&gt;\")\n    .replace(/\"/g, \"&quot;\")\n    .replace(/'/g, \"&#39;\");\n}\n\n\n// ------------------------------------\n// Basic inline Markdown formatting\n// ------------------------------------\nfunction formatInline(text) {\n\n  let value = escapeHtml(text);\n\n  // Bold: **text**\n  value = value.replace(\n    /\\*\\*(.*?)\\*\\*/g,\n    \"<strong>$1</strong>\"\n  );\n\n  // Italic: *text*\n  value = value.replace(\n    /(?<!\\*)\\*([^*]+)\\*(?!\\*)/g,\n    \"<em>$1</em>\"\n  );\n\n  return value;\n}\n\n\n// ------------------------------------\n// Split PRD into lines\n// ------------------------------------\nconst lines = prd\n  .replace(/\\r\\n/g, \"\\n\")\n  .replace(/\\r/g, \"\\n\")\n  .split(\"\\n\");\n\nlet htmlContent = \"\";\n\nlet inTable = false;\nlet tableRows = [];\n\n\n// ------------------------------------\n// Flush table\n// ------------------------------------\nfunction flushTable() {\n\n  if (!tableRows.length) {\n    return;\n  }\n\n  htmlContent += `\n<table>\n  <thead>\n    <tr>\n      ${tableRows[0]\n        .map(cell => `<th>${formatInline(cell)}</th>`)\n        .join(\"\")}\n    </tr>\n  </thead>\n  <tbody>\n`;\n\n  for (let i = 1; i < tableRows.length; i++) {\n\n    htmlContent += `\n    <tr>\n      ${tableRows[i]\n        .map(cell => `<td>${formatInline(cell)}</td>`)\n        .join(\"\")}\n    </tr>\n`;\n  }\n\n  htmlContent += `\n  </tbody>\n</table>\n`;\n\n  tableRows = [];\n  inTable = false;\n}\n\n\n// ------------------------------------\n// Process lines\n// ------------------------------------\nfor (let i = 0; i < lines.length; i++) {\n\n  const rawLine = lines[i];\n  const line = rawLine.trim();\n\n  // ----------------------------------\n  // Empty line\n  // ----------------------------------\n  if (!line) {\n\n    if (inTable) {\n      flushTable();\n    }\n\n    continue;\n  }\n\n\n  // ----------------------------------\n  // Ignore Markdown code fences\n  // ----------------------------------\n  if (line === \"```\" || line.startsWith(\"```\")) {\n    continue;\n  }\n\n\n  // ----------------------------------\n  // Markdown table\n  // ----------------------------------\n  if (line.includes(\"|\")) {\n\n    let cells = line\n      .split(\"|\")\n      .map(cell => cell.trim());\n\n    // Remove empty first/last cells\n    if (cells[0] === \"\") {\n      cells.shift();\n    }\n\n    if (cells[cells.length - 1] === \"\") {\n      cells.pop();\n    }\n\n    // Ignore Markdown separator row\n    const isSeparator = cells.every(cell =>\n      /^:?-{3,}:?$/.test(cell)\n    );\n\n    if (isSeparator) {\n      continue;\n    }\n\n    if (!inTable) {\n      inTable = true;\n    }\n\n    tableRows.push(cells);\n\n    continue;\n  }\n\n\n  // ----------------------------------\n  // Close table if next line isn't table\n  // ----------------------------------\n  if (inTable) {\n    flushTable();\n  }\n\n\n  // ----------------------------------\n  // Main PRD title\n  // ----------------------------------\n  if (\n    line\n      .replace(/[*#]/g, \"\")\n      .trim()\n      .toUpperCase()\n      .includes(\"PRODUCT REQUIREMENTS DOCUMENT\")\n  ) {\n\n    htmlContent += `\n<h1>PRODUCT REQUIREMENTS DOCUMENT</h1>\n`;\n\n    continue;\n  }\n\n\n  // ----------------------------------\n  // Markdown H1 / H2 / H3\n  // ----------------------------------\n  const headingMatch = line.match(/^#{1,3}\\s+(.+)$/);\n\n  if (headingMatch) {\n\n    const heading = headingMatch[1]\n      .replace(/\\*\\*/g, \"\")\n      .trim();\n\n    htmlContent += `\n<h2>${escapeHtml(heading)}</h2>\n`;\n\n    continue;\n  }\n\n\n  // ----------------------------------\n  // PRD Title\n  // **PRD Title**: Healthcare AI...\n  // ----------------------------------\n  const prdTitleMatch = line.match(\n    /^\\*\\*PRD Title\\*\\*\\s*:?\\s*(.*)$/i\n  );\n\n  if (prdTitleMatch) {\n\n    htmlContent += `\n<h2>PRD Title</h2>\n<p>${formatInline(prdTitleMatch[1])}</p>\n`;\n\n    continue;\n  }\n\n\n  // ----------------------------------\n  // Bullet list\n  // ----------------------------------\n  if (/^[-*]\\s+/.test(line)) {\n\n    const item = line.replace(/^[-*]\\s+/, \"\");\n\n    htmlContent += `\n<div class=\"bullet-item\">\n  <span class=\"bullet\">•</span>\n  <span>${formatInline(item)}</span>\n</div>\n`;\n\n    continue;\n  }\n\n\n  // ----------------------------------\n  // Numbered list\n  // ----------------------------------\n  if (/^\\d+\\.\\s+/.test(line)) {\n\n    const match = line.match(/^(\\d+)\\.\\s+(.*)$/);\n\n    htmlContent += `\n<div class=\"numbered-item\">\n  <span class=\"number\">${escapeHtml(match[1])}.</span>\n  <span>${formatInline(match[2])}</span>\n</div>\n`;\n\n    continue;\n  }\n\n\n  // ----------------------------------\n  // Normal paragraph\n  // ----------------------------------\n  htmlContent += `\n<p>${formatInline(line)}</p>\n`;\n}\n\n\n// ------------------------------------\n// Flush final table\n// ------------------------------------\nif (inTable) {\n  flushTable();\n}\n\n\n// ------------------------------------\n// Complete HTML document\n// ------------------------------------\nconst html = `\n<!DOCTYPE html>\n\n<html>\n\n<head>\n\n<meta charset=\"UTF-8\">\n\n<style>\n\n@page {\n  margin: 35px;\n}\n\nbody {\n  font-family: Arial, Helvetica, sans-serif;\n  margin: 0;\n  line-height: 1.5;\n  color: #222;\n  font-size: 11pt;\n}\n\nh1 {\n  text-align: center;\n  font-size: 20pt;\n  margin-bottom: 30px;\n}\n\nh2 {\n  font-size: 14pt;\n  margin-top: 25px;\n  margin-bottom: 10px;\n  border-bottom: 2px solid #333;\n  padding-bottom: 5px;\n}\n\np {\n  margin: 0 0 10px 0;\n}\n\nstrong {\n  font-weight: bold;\n}\n\n.bullet-item {\n  display: flex;\n  margin: 4px 0 4px 15px;\n}\n\n.bullet {\n  width: 18px;\n  flex-shrink: 0;\n}\n\n.numbered-item {\n  display: flex;\n  margin: 4px 0 4px 15px;\n}\n\n.number {\n  width: 25px;\n  flex-shrink: 0;\n}\n\n\n/* -------------------------------\n   REAL HTML TABLE\n-------------------------------- */\n\ntable {\n  width: 100%;\n  border-collapse: collapse;\n  margin: 15px 0 20px 0;\n  font-size: 10pt;\n  page-break-inside: auto;\n}\n\nthead {\n  display: table-header-group;\n}\n\ntr {\n  page-break-inside: avoid;\n  page-break-after: auto;\n}\n\nth,\ntd {\n  border: 1px solid #555;\n  padding: 7px 8px;\n  text-align: left;\n  vertical-align: top;\n}\n\nth {\n  font-weight: bold;\n  background-color: #eeeeee;\n}\n\n\n/* Keep headings with content */\n\nh2 {\n  page-break-after: avoid;\n}\n\n\n/* Avoid ugly paragraph splitting */\n\np {\n  orphans: 3;\n  widows: 3;\n}\n\n</style>\n\n</head>\n\n<body>\n\n${htmlContent}\n\n</body>\n\n</html>\n`;\n\n\n// ------------------------------------\n// Return HTML to next n8n node\n// ------------------------------------\nreturn [\n  {\n    json: {\n      html: html\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -256
+      ],
+      "id": "bb289f66-19ca-463d-b319-043dbd9d389f",
+      "name": "Generate PRD HTML"
+    },
+    {
+      "parameters": {
+        "operation": "URL/HTML to PDF",
+        "convertType": "htmlToPDF",
+        "html": "={{ $json.html }}",
+        "advancedOptions": {}
+      },
+      "type": "n8n-nodes-pdfco.PDFco Api",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        -256
+      ],
+      "id": "67546992-75fa-4ae2-9458-c596318e2d00",
+      "name": "PDFco API",
+      "credentials": {
+        "pdfcoApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        -256
+      ],
+      "id": "d0abbde5-e705-46dd-aeac-044f60f0bfba",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "sendTo": "animesh.deb1984@gmail.com",
+        "subject": "=Approved PRD  {{ $('Find PRD Review').item.json.meeting_title }}",
+        "message": "=Hello,   \nThe Product Requirements Document has been reviewed and approved.   \nPlease find the approved PRD attached as a PDF.  \nRegards,  \nPRD Genie",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "=data"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        -256
+      ],
+      "id": "1676608f-8c81-4beb-90dd-e96c3e753af2",
+      "name": "Send a message",
+      "webhookId": "97b7e0b7-6bda-4bec-a0df-aa2fb82dfcf2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "77wBNetQc7tBuGJM",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ouonqLFcGeLCteKq",
+          "mode": "list",
+          "cachedResultName": "prd_reviews",
+          "cachedResultUrl": "/projects/mLt36zsGcWAKgjbV/datatables/ouonqLFcGeLCteKq"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slack_thread_ts",
+              "keyValue": "={{ $json.slack_thread_ts }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "Modification Requested",
+            "pm_instruction": "={{ $('Parse PM Decision').item.json.modification_instructions }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "prd_id",
+              "displayName": "prd_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "slack_thread_ts",
+              "displayName": "slack_thread_ts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "meeting_title",
+              "displayName": "meeting_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "prd_json",
+              "displayName": "prd_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "pm_instruction",
+              "displayName": "pm_instruction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -896,
+        32
+      ],
+      "id": "aee55e91-d340-425d-9517-3bc35a9f6522",
+      "name": "Update Data Table Status"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ouonqLFcGeLCteKq",
+          "mode": "list",
+          "cachedResultName": "prd_reviews",
+          "cachedResultUrl": "/projects/mLt36zsGcWAKgjbV/datatables/ouonqLFcGeLCteKq"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slack_thread_ts",
+              "keyValue": "={{ $('Approval Decision').item.json.slack_thread_ts }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "Approved"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "prd_id",
+              "displayName": "prd_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "slack_thread_ts",
+              "displayName": "slack_thread_ts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "meeting_title",
+              "displayName": "meeting_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "prd_json",
+              "displayName": "prd_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "pm_instruction",
+              "displayName": "pm_instruction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1328,
+        -256
+      ],
+      "id": "fa441530-9960-4f06-b029-d50ac7bb4a47",
+      "name": "Update Data Table Status-Approved"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the existing PRD from the Data Table\n\nconst storedPrd =\n  $input.first().json.prd_json;\n\n\n// Get PM modification instructions\n\nconst modificationInstructions =\n  $('Parse PM Decision')\n    .first()\n    .json\n    .modification_instructions;\n\n\n// Return both together\n\nreturn [\n  {\n    json: {\n      existing_prd: storedPrd,\n      modification_instructions:\n        modificationInstructions\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        32
+      ],
+      "id": "17f765d1-e950-49c5-b846-7bc60d08e661",
+      "name": "Prepare PRD for Modification"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are PRD Genie, an AI Product Requirements Document assistant.\n\nYou are revising an existing Product Requirements Document based on Product Manager feedback.\n\nRules:\n\n1. Preserve valid existing requirements unless the PM explicitly requests changes.\n\n2. Apply the PM's modification instructions.\n\n3. Do not invent new requirements unless they are explicitly requested by the PM.\n\n4. Maintain the existing PRD structure.\n\n5. If a PM instruction is unclear, preserve the existing content and add the ambiguity to open_questions.\n\n6. Maintain source references wherever possible.\n\n7. Return the complete revised PRD.\n\nDo not return explanations outside the PRD."
+            },
+            {
+              "content": "=EXISTING PRD:\n\n{{ JSON.stringify($json.existing_prd, null, 2) }}\n\n\nPM MODIFICATION REQUEST:\n\n{{ $json.modification_instructions }}\n\n\nPlease generate the COMPLETE revised PRD.\n\nThe output must include all sections, including:\n\noverview\nproblem_statement\ngoals\nnon_goals\nsuccess_metrics\nepics\nfeatures\nuser_stories\nacceptance_criteria\nconstraints\nopen_questions\n\nReturn the entire revised PRD, not only the changed sections."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        -432,
+        32
+      ],
+      "id": "4bda7f8d-a08b-4ab8-9b77-fdda7e2f6ae3",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "eZcoLayNM4SACHCy",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ouonqLFcGeLCteKq",
+          "mode": "list",
+          "cachedResultName": "prd_reviews",
+          "cachedResultUrl": "/projects/mLt36zsGcWAKgjbV/datatables/ouonqLFcGeLCteKq"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slack_thread_ts",
+              "keyValue": "={{ $('Update Data Table Status').item.json.slack_thread_ts }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "prd_json": "={{ $json.output[0].content[0].text }}",
+            "status": "Pending_Reapproval"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "prd_id",
+              "displayName": "prd_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "slack_thread_ts",
+              "displayName": "slack_thread_ts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "meeting_title",
+              "displayName": "meeting_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "prd_json",
+              "displayName": "prd_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "pm_instruction",
+              "displayName": "pm_instruction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -64,
+        32
+      ],
+      "id": "db679542-095a-462f-9b42-6239e3320319",
+      "name": "Upsert row(s)"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BUP1KJ1MM",
+          "mode": "id"
+        },
+        "text": "=\n🔄 *PRD GENIE — REVISED DRAFT*\nThe PRD has been revised based on PM feedback.\n\n{{ $('Message a model').item.json.output[0].content[0].text }}\n\n*PM REVIEW REQUIRED*\nPlease reply with:\n\n🟢 *APPROVE*\nor\n🟡 *MODIFY:*\n\nfollowed by your additional instructions.",
+        "otherOptions": {
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Find PRD Review').first().json.slack_thread_ts }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        160,
+        32
+      ],
+      "id": "b2e9c3f7-22bb-4683-b718-65c7cee0bd93",
+      "name": "Send Revised PRD for Approval",
+      "webhookId": "46a24ef6-98fe-4079-a0de-35e6af2acb0c",
+      "credentials": {
+        "slackApi": {
+          "id": "QsjcUMKfoTptaplc",
+          "name": "Slack account 8"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Slack Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract PM Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PM Response": {
+      "main": [
+        [
+          {
+            "node": "Parse PM Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse PM Decision": {
+      "main": [
+        [
+          {
+            "node": "Find PRD Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find PRD Review": {
+      "main": [
+        [
+          {
+            "node": "Approval Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Decision": {
+      "main": [
+        [
+          {
+            "node": "Parse Final PRD",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Data Table Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Final PRD": {
+      "main": [
+        [
+          {
+            "node": "Generate PRD HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate PRD HTML": {
+      "main": [
+        [
+          {
+            "node": "PDFco API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDFco API": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Update Data Table Status-Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Data Table Status": {
+      "main": [
+        [
+          {
+            "node": "Prepare PRD for Modification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare PRD for Modification": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Upsert row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert row(s)": {
+      "main": [
+        [
+          {
+            "node": "Send Revised PRD for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8c0a9828-516a-4382-96eb-ffa68299e36c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2d26ba9c1a9292fb737388a5cf74469274a3f2bca5900725376e9fe3ac245ad1"
+  },
+  "nodeGroups": [],
+  "id": "TLrwOVYmE08x8Mcu",
+  "tags": []
+}

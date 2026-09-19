@@ -1,0 +1,15 @@
+1. Healthcare AI — Early Patient Deterioration Detection
+
+Product Manager: We want to build an AI-powered system that can detect early signs of patient deterioration before the condition becomes critical.
+
+Doctor: The system should monitor changes in vital signs, lab results, medication patterns, and recent clinical observations.
+
+Nurse Manager: False alarms are a major concern. Doctors and nurses should be able to review an alert before any clinical action is taken.
+
+Product Manager: The system should provide a confidence score and explain which patient indicators contributed to the alert.
+
+Doctor: The hospital’s electronic health record system should be the primary source of patient information.
+
+Nurse Manager: For the MVP, the system should recommend that the care team review the patient rather than automatically change treatment.
+
+Product Manager: Agreed. Human clinical approval must remain mandatory.

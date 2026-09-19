@@ -1,0 +1,839 @@
+{
+  "name": "PRD Genie Basic Transcript Receiving and 1st Draft Creation",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": [
+          "app_mention",
+          "message"
+        ],
+        "channelId": {
+          "__rl": true,
+          "value": "C0BUP1KJ1MM",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        -480
+      ],
+      "id": "4e3257d0-8e53-48ea-8965-93eaf241af74",
+      "name": "Slack Trigger",
+      "webhookId": "ea8a4bfa-d302-4263-9b47-5aa50b5bdbc3",
+      "credentials": {
+        "slackApi": {
+          "id": "bGSXH86Pkn2VXRQy",
+          "name": "Slack account 6"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d95def4e-eda4-424a-b560-feed927a270c",
+              "name": "text",
+              "value": "=\n{{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        128,
+        -480
+      ],
+      "id": "16ff29a0-a037-4f9e-8b9e-0d3c2bd68a35",
+      "name": "Extract Meeting Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f57974ef-82c0-41dc-b97d-ca1afe9e7864",
+              "leftValue": "={{ $json.transcript }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "de1c61a7-b286-4095-8f0f-ccbb5a927d11",
+              "leftValue": "={{ $json.transcript.length }}",
+              "rightValue": 100,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        544,
+        -480
+      ],
+      "id": "857b5240-604a-4a66-a02a-0c8dfb8a30a7",
+      "name": "Validate Transcript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcript = $json.transcript;\n\n// Mask email addresses\nconst maskedEmail = transcript.replace(\n  /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi,\n  '[EMAIL_REDACTED]'\n);\n\n// Mask Indian phone numbers\nconst maskedPhone = maskedEmail.replace(\n  /(?:\\+91[\\s-]?)?[6-9]\\d{9}\\b/g,\n  '[PHONE_REDACTED]'\n);\n\nreturn [\n  {\n    json: {\n      meeting_title: $json.meeting_title,\n      clean_transcript: maskedPhone\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -560
+      ],
+      "id": "2e88d863-09a5-4acb-8e56-2fe0ea01f133",
+      "name": "Mask PII"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcript = $json.clean_transcript;\nconst chunkSize = 1500;\n\nconst chunks = [];\n\nfor (let i = 0; i < transcript.length; i += chunkSize) {\n  chunks.push({\n    json: {\n      meeting_title: $json.meeting_title,\n      chunk_id: `chunk_${chunks.length + 1}`,\n      chunk_text: transcript.slice(i, i + chunkSize)\n    }\n  });\n}\n\nreturn chunks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        -432
+      ],
+      "id": "cb0fb5e6-7ef4-4b82-bd25-c6323896ff41",
+      "name": "Create Chunk"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -304,
+        48
+      ],
+      "id": "2f8d60b8-8b42-4dd4-95d3-41b1ed10621c",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "eZcoLayNM4SACHCy",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{ \n  \"type\": \"object\", \n  \"properties\": { \n    \"requirements\": { \n      \"type\": \"array\", \n      \"items\": { \n        \"type\": \"object\", \n        \"properties\": { \n          \"requirement_text\": { \n            \"type\": \"string\" \n          }, \n          \"actor\": { \n            \"type\": \"string\" \n          }, \n          \"goal\": { \n            \"type\": \"string\" \n          }, \n          \"constraint\": { \n            \"type\": \"string\" \n          }, \n          \"priority_signal\": { \n            \"type\": \"string\" \n          }, \n          \"type_guess\": { \n            \"type\": \"string\", \n            \"enum\": [ \n              \"epic\", \n              \"feature\", \n              \"user_story\", \n              \"unclear\" \n            ] \n          }, \n          \"source_ref\": { \n            \"type\": \"string\" \n          } \n        }, \n        \"required\": [ \n          \"requirement_text\", \n          \"source_ref\" \n        ] \n      } \n    } \n  }, \n  \"required\": [ \n    \"requirements\" \n  ] \n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -112,
+        32
+      ],
+      "id": "53795126-688c-4f58-8ca3-df98cd768e63",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $json.text || \"\";\n\nconst lines = message\n  .split(\"\\n\")\n  .map(line => line.trim())\n  .filter(line => line !== \"\");\n\nlet meetingTitle = \"Untitled Meeting\";\nlet transcriptLines = lines;\n\n// If first line does NOT look like a speaker line,\n// treat it as the meeting title.\nif (\n  lines.length > 0 &&\n  !lines[0].match(/^[A-Za-z\\s]+:/)\n) {\n  meetingTitle = lines[0];\n  transcriptLines = lines.slice(1);\n}\n\nconst transcript = transcriptLines.join(\"\\n\");\n\nreturn [\n  {\n    json: {\n      meeting_title: meetingTitle,\n      transcript: transcript\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -480
+      ],
+      "id": "6ad31ff5-4445-4484-80f5-147b8a5d548a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a Product Requirements Classification Agent. \nYou receive extracted requirements from a meeting transcript. \nClassify each item into one of these categories: \nEpic \nFeature \nUser Story \nConstraint \nOpen Question \nRules: \n1. Do not create new requirements. \n2. Do not remove requirements. \n3. Do not change the meaning. \n4. Preserve requirement_text. \n5. Preserve source_ref exactly. \n6. Priority must only be assigned when supported by the input. \n7. If priority is not explicitly mentioned, use \"Not Specified\". \n8. If an item is ambiguous, classify it as \"Open Question\". \nExtracted Requirements: \n{{ JSON.stringify($json.output.requirements) }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        112,
+        -128
+      ],
+      "id": "dee9af46-eb3b-4817-a61e-396d9977e665",
+      "name": "Requirement Classification Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        48,
+        64
+      ],
+      "id": "81e34972-0fb9-4336-95e9-eeac6d0f4cdd",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "eZcoLayNM4SACHCy",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{ \n  \"type\": \"object\", \n  \"properties\": { \n    \"classified_items\": { \n      \"type\": \"array\", \n      \"items\": { \n        \"type\": \"object\", \n        \"properties\": { \n          \"requirement_text\": { \n            \"type\": \"string\" \n          }, \n          \"category\": { \n            \"type\": \"string\", \n            \"enum\": [ \n              \"Epic\", \n              \"Feature\", \n              \"User Story\", \n              \"Constraint\", \n              \"Open Question\" \n            ] \n          }, \n          \"priority\": { \n            \"type\": \"string\", \n            \"enum\": [ \n              \"High\", \n              \"Medium\", \n              \"Low\", \n              \"Not Specified\" \n            ] \n          }, \n          \"priority_rationale\": { \n            \"type\": \"string\" \n          }, \n          \"source_ref\": { \n            \"type\": \"string\" \n          } \n        }, \n        \"required\": [ \n          \"requirement_text\", \n          \"category\", \n          \"source_ref\" \n        ] \n      } \n    } \n  }, \n  \"required\": [ \n    \"classified_items\" \n  ] \n} \n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        272,
+        48
+      ],
+      "id": "1cc80ff2-c291-4e73-bcff-5728bb0dadf7",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BV81A6R1S",
+          "mode": "list",
+          "cachedResultName": "all-prd-genie"
+        },
+        "text": "Invalid transcript.  Please provide a meeting transcript of at least 100 words to create a well defined PRD with sufficient details.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        736,
+        -432
+      ],
+      "id": "11255abb-0e46-4587-8e86-fbeba017e7c9",
+      "name": "No Detailed Transcript Received",
+      "webhookId": "03131f53-4417-4d54-8d19-2ea01763252f",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "kvpmMleOviK0xHWJ",
+          "name": "Slack account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a Senior Product Manager. \nGenerate a structured Product Requirements Document (PRD). \nYou must use ONLY the classified requirements provided. \nRules: \n1. Do not invent requirements. \n2. Do not introduce technologies or integrations not mentioned. \n3. Preserve the meaning of requirements. \n4. Every Epic, Feature, and User Story must contain source_ref. \n5. Organize the PRD as: \nPRD Title\nOverview \nProblem Statement \nGoals \nNon Goals \nSuccess Metrics \nEpics \nFeatures \nUser Stories \nAcceptance Criteria \nConstraints \nOpen Questions \n6. If information is missing or ambiguous, add it to open_questions. \n7. Do not guess missing information. \nUser Story format: \nAs a <actor>, \nI want <goal>, \nso that <benefit>. \nAcceptance criteria must be based on the provided requirements. \nMeeting Title: \n {{ $('Create Chunk').item.json.meeting_title }}\nClassified Requirements: \n{{ JSON.stringify($json.output.classified_items) }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        480,
+        -128
+      ],
+      "id": "327d3312-b628-4c40-a3ab-b574919ac8e4",
+      "name": "PRD Generation Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        64
+      ],
+      "id": "0c7dea94-fc94-409a-a2dc-a878800e7b8b",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "eZcoLayNM4SACHCy",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{ \n\"overview\": \"string\", \n  \"problem_statement\": \"string\", \n  \"goals\": [ \n    \"string\" \n  ], \n  \"non_goals\": [ \n    \"string\" \n  ], \n  \"success_metrics\": [ \n    \"string\" \n  ], \n  \"epics\": [ \n    { \n      \"title\": \"string\", \n      \"description\": \"string\", \n      \"source_ref\": [ \n        \"chunk_1\" \n      ], \n      \"features\": [ \n        { \n          \"title\": \"string\", \n          \"description\": \"string\", \n          \"source_ref\": [ \n            \"chunk_1\" \n          ], \n          \"user_stories\": [ \n            { \n              \"story\": \"string\", \n              \"acceptance_criteria\": [ \n                \"string\" \n              ], \n              \"source_ref\": [ \n                \"chunk_1\" \n              ] \n            } \n          ] \n        } \n      ] \n    } \n  ], \n  \"constraints\": [ \n    { \n      \"description\": \"string\", \n      \"source_ref\": [ \n        \"chunk_1\" \n      ] \n    } \n  ], \n  \"open_questions\": [ \n    { \n      \"question\": \"string\", \n      \"source_ref\": [ \n        \"chunk_1\" \n      ] \n    } \n  ] \n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        656,
+        64
+      ],
+      "id": "b5cc1130-3671-4935-85f3-884381e41b99",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        848,
+        -128
+      ],
+      "id": "185f12ce-d0dd-47d3-91f3-76c36395cdef",
+      "name": "Aggregate Chunk PRDs"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are PRD Genie, an expert Product Manager.\n\nYou will receive PRD information generated from multiple chunks of the SAME meeting transcript.\n\nYour job is to consolidate all information into ONE complete and coherent Product Requirements Document.\n\nThe chunk outputs may contain duplicate, overlapping, or differently worded requirements.\n\nYou must:\n\n1. Merge duplicate requirements.\n2. Merge overlapping requirements where they describe the same capability.\n3. Remove repeated information.\n4. Create one unified PRD Title \n5. Create one unified Overview.\n6. Create one unified Problem Statement.\n7. Consolidate Goals.\n8. Consolidate Non-Goals.\n9. Consolidate Success Metrics.\n10. Organize Epics logically.\n11. Organize Features under the appropriate Epics.\n12. Consolidate User Stories.\n13. Consolidate Acceptance Criteria.\n14. Consolidate Constraints.\n15. Consolidate Open Questions.\n16. Keep the size to a max of 400 words and not more than that.\n\nGrounding Rules:\n\n- Use only information contained in the provided chunk outputs.\n- Do not invent requirements.\n- Do not introduce new functionality.\n- If information is unclear, place it under Open Questions.\n- Preserve source references whenever they are available.\n- If an item comes from multiple chunks, preserve all relevant source references.\n\nReturn ONE unified PRD with MAXIMUM OF 400 WORDS\n\nDo not create separate PRDs for each chunk."
+            },
+            {
+              "content": "=You are the final PRD formatter for PRD Genie.\n\nYour task is to generate the final, production-ready Product Requirements Document (PRD) using the validated PRD information provided below.\n\nThe output will be processed by a downstream n8n Code node and then sent directly to Slack.\n\nSTRICT OUTPUT RULES:\n\n1. Return ONLY the final PRD content.\n2. Do NOT return JSON.\n3. Do NOT wrap the response in any markdown, text, or code fence.\n4. Do NOT include explanations before or after the PRD.\n5. Do NOT use HTML.\n6. Do NOT use Markdown heading syntax such as #, ##, or ###.\n7. Use Slack-compatible formatting.\n8. Main title and every section header MUST use Slack bold syntax:\n   *HEADER*\n9. Use numbered lists for sequential requirements.\n10. Use bullet points for non-sequential items.\n11. Keep the content concise but do not remove important requirements.\n12. Preserve all validated information accurately.\n13. Do NOT invent requirements, metrics, features, users, integrations, or technical capabilities.\n14. Do NOT add information that is not present in the validated PRD.\n15. The PRD Size should be MAXIMUM OF 400 WORDS\n\nIMPORTANT TABLE RULE:\n\nDo NOT attempt to visually align columns using spaces.\n\nDo NOT create Markdown tables.\n\nDo NOT use Unicode box-drawing characters such as:\n────────────────────────\n\nDo NOT use triple backticks.\n\nDo NOT use tabs for alignment.\n\nFor information that naturally has two columns, output each row using this exact delimiter:\n\nColumn 1 | Column 2\n\nThe \"|\" character is the ONLY delimiter between the two values.\n\nThe downstream Code node will convert these rows into a Slack-friendly label and description format.\n\nExample:\n\nEarly Warning System | The platform provides an early warning system for clinical teams.\n\nVital Signs Monitoring | The system monitors oxygen saturation, heart rate, blood pressure, and temperature.\n\nSUCCESS METRICS must use:\n\nMetric | Target\n\nEPICS must use:\n\nEpic | Description\n\nFEATURES must use:\n\nFeature | Description\n\nDo NOT add a header row such as \"Feature | Description\" unless explicitly requested. The downstream formatter will add the appropriate labels.\n\nPRD STRUCTURE:\n\n*PRODUCT REQUIREMENTS DOCUMENT (PRD)*\n*PRD Title*\nProdive Title similar to Meeting Title\n\n*OVERVIEW*\n\nProvide a concise overview.\n\n*PROBLEM STATEMENT*\n\nDescribe the problem being solved.\n\n*GOALS*\n\nPresent the goals as a numbered list.\n\n*NON-GOALS*\n\nPresent the non-goals as a numbered list.\n\n*SUCCESS METRICS*\n\nPresent each metric using:\n\nMetric | Target\n\n*EPICS*\n\nPresent each epic using:\n\nEpic | Description\n\n*FEATURES*\n\nPresent each feature using:\n\nFeature | Description\n\n*USER STORIES*\n\nPresent each user story as a numbered list.\n\n*ACCEPTANCE CRITERIA*\n\nPresent each acceptance criterion as a numbered list.\n\n*CONSTRAINTS*\n\nPresent each constraint as a numbered list.\n\n*OPEN QUESTIONS*\n\nPresent each open question as a numbered list.\n\nFORMATTING GUIDELINES:\n\n1. Keep section headers short and bold using Slack syntax.\n2. Use blank lines between sections.\n3. Use Slack bold syntax with a single pair of asterisks:\n   *SECTION HEADER*\n4. Do NOT use **double asterisks**.\n5. Do NOT use #, ##, or ### headings.\n6. Do NOT use HTML.\n7. Do NOT use Markdown tables.\n8. Do NOT use table separator lines.\n9. Do NOT use Unicode box-drawing characters.\n10. Do NOT use triple backticks.\n11. Do NOT use tabs or spaces to align columns.\n12. Keep descriptions readable and concise.\n13. Avoid excessively long paragraphs.\n14. Keep the final content easy to read on both Slack desktop and mobile.\n15. Preserve the meaning of the validated PRD.\n16. The PRD Size should be MAXIMUM OF 400 WORDS\n\n\nIMPORTANT:\n\nDo NOT include the approval instruction inside the PRD content.\n\nThe downstream n8n Code node will append the approval instruction separately.\nThe PRD Size should be MAXIMUM OF 400 WORDS\n\n\nVALIDATED PRD INPUT:\n\n{{ JSON.stringify($json.data, null, 2) }}\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1072,
+        -128
+      ],
+      "id": "05f10c39-044b-4749-bb82-a57d882e33f4",
+      "name": "Generate Final PRD",
+      "credentials": {
+        "openAiApi": {
+          "id": "eZcoLayNM4SACHCy",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json['PRD Doc']\n\nif (!raw) {\n  throw new Error(\"Final PRD text not found\");\n}\n\nlet text = String(raw).trim();\n\n// --------------------------------------------------\n// BASIC CLEANUP\n// --------------------------------------------------\n\n// Remove accidental code fences\ntext = text.replace(/^```(?:markdown|text)?\\s*/i, \"\");\ntext = text.replace(/\\s*```$/i, \"\");\n\n// Remove Markdown headings if AI accidentally creates them\ntext = text.replace(\n  /^#{1,6}\\s+(.+)$/gm,\n  '*$1*'\n);\n\n// Convert Markdown bold to Slack bold\ntext = text.replace(\n  /\\*\\*(.*?)\\*\\*/g,\n  '*$1*'\n);\n\n// Remove non-breaking spaces\ntext = text.replace(/\\u00A0/g, \" \");\n\n// Remove tabs\ntext = text.replace(/\\t/g, \" \");\n\n// Remove accidental Slack timestamps\ntext = text.replace(\n  /^\\[\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\]\\s*$/gmi,\n  \"\"\n);\n\n// Remove excessive blank lines\ntext = text.replace(/\\n{3,}/g, \"\\n\\n\");\n\n\n// --------------------------------------------------\n// FORMAT TWO-COLUMN SECTIONS\n// --------------------------------------------------\n\nfunction formatTwoColumnSection(text, sectionName, labelName) {\n\n  const regex = new RegExp(\n    `\\\\*${sectionName}\\\\*\\\\s*\\\\n([\\\\s\\\\S]*?)(?=\\\\n\\\\*[^\\\\n]+\\\\*|$)`,\n    \"i\"\n  );\n\n  const match = text.match(regex);\n\n  if (!match) {\n    return text;\n  }\n\n  const rows = match[1]\n    .split(\"\\n\")\n    .map(line => line.trim())\n    .filter(line => line.includes(\"|\"));\n\n  if (rows.length === 0) {\n    return text;\n  }\n\n  const formattedRows = rows.map(row => {\n\n    const parts = row.split(\"|\");\n\n    const column1 = (parts[0] || \"\").trim();\n\n    const column2 = parts\n      .slice(1)\n      .join(\"|\")\n      .trim();\n\n    if (!column1 || !column2) {\n      return \"\";\n    }\n\n    return `*${labelName}:* ${column1}\\n*Description:* ${column2}`;\n  })\n  .filter(Boolean);\n\n  const replacement =\n    `*${sectionName}*\\n\\n` +\n    formattedRows.join(\"\\n\\n\");\n\n  return text.replace(match[0], replacement);\n}\n\n\n// --------------------------------------------------\n// SUCCESS METRICS\n// --------------------------------------------------\n\ntext = formatTwoColumnSection(\n  text,\n  \"SUCCESS METRICS\",\n  \"Metric\"\n);\n\n\n// --------------------------------------------------\n// EPICS\n// --------------------------------------------------\n\ntext = formatTwoColumnSection(\n  text,\n  \"EPICS\",\n  \"Epic\"\n);\n\n\n// --------------------------------------------------\n// FEATURES\n// --------------------------------------------------\n\ntext = formatTwoColumnSection(\n  text,\n  \"FEATURES\",\n  \"Feature\"\n);\n\n\n// --------------------------------------------------\n// CLEANUP AGAIN\n// --------------------------------------------------\n\ntext = text.replace(/\\n{3,}/g, \"\\n\\n\");\n\ntext = text.trim();\n\n\n// --------------------------------------------------\n// ADD HUMAN-IN-THE-LOOP INSTRUCTION\n// --------------------------------------------------\n\ntext +=\n  \"\\n\\n────────────────────────────\\n\" +\n  \"*ACTION REQUIRED*\\n\\n\" +\n  \"Reply with *APPROVE* to approve this PRD.\\n\" +\n  \"Or reply with *MODIFY:* followed by your changes.\";\n\nreturn [\n  {\n    json: {\n      slack_message: text\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        -128
+      ],
+      "id": "7d0449b4-b91d-46f6-8483-7180f17d2d3b",
+      "name": "Slack Formatting"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a31ee8c3-e7f2-4184-a475-b6d4c4c3e68e",
+              "name": "=PRD Doc",
+              "value": "=\n{{ $json.output[0].content[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1776,
+        -128
+      ],
+      "id": "5ac7c50d-8456-47c1-a311-d3240d1d5e47",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BUP1KJ1MM",
+          "mode": "id"
+        },
+        "text": "={{ $json.slack_message }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        2144,
+        -128
+      ],
+      "id": "96ecf33d-04a8-4659-ace4-284a3905880b",
+      "name": "Send PRD for Approval",
+      "webhookId": "03131f53-4417-4d54-8d19-2ea01763252f",
+      "credentials": {
+        "slackApi": {
+          "id": "QsjcUMKfoTptaplc",
+          "name": "Slack account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "ouonqLFcGeLCteKq",
+          "mode": "list",
+          "cachedResultName": "prd_reviews",
+          "cachedResultUrl": "/projects/mLt36zsGcWAKgjbV/datatables/ouonqLFcGeLCteKq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "prd_id": "={{ $('Generate Final PRD').item.json.output[0].id }}",
+            "slack_thread_ts": "={{ $json.message.ts }}",
+            "meeting_title": "={{ $('PRD Generation Agent').first().json.output.PRD_Title }}",
+            "prd_json": "={{ $('Edit Fields').item.json[\"PRD Doc\"] }}",
+            "status": "Pending"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "prd_id",
+              "displayName": "prd_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "slack_thread_ts",
+              "displayName": "slack_thread_ts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "meeting_title",
+              "displayName": "meeting_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "prd_json",
+              "displayName": "prd_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "pm_instruction",
+              "displayName": "pm_instruction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2416,
+        -128
+      ],
+      "id": "b2abb2d2-e916-437b-ad78-cf5ddc193a1d",
+      "name": "Save PRD Review"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a Product Requirements Extraction Agent. \nYour task is to extract product requirements from a meeting \ntranscript. \nRules: \n1. Extract only information explicitly mentioned in the transcript. \n2. Do not invent requirements. \n3. Identify the actor or stakeholder when available. \n4. Identify the goal when available. \n5. Identify constraints when explicitly mentioned. \n6. Identify priority signals only when explicitly mentioned. \n7. Preserve the source reference. \n8. If something is unclear, use \"unclear\". \n9. Do not generate a PRD. \n10. Only extract requirements. \n11. For every extracted requirement, source_ref must exactly equal the \nprovided Chunk ID.\n\nMeeting Title: \n{{ $json.meeting_title }} \nChunk ID: \n{{ $json.chunk_id }} \nMeeting Transcript: \n{{ $json.chunk_text }} \nThe important guardrail here is: \nDo not invent requirements.",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -288,
+        -128
+      ],
+      "id": "7b2b2b4a-3ac3-4874-a590-ca2063974c9b",
+      "name": "Requirement Extraction Agent"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=LIMIT THE SIZE OF THE TEXT TO MAXIMUM OF 400 WORDS. SKIP THE LESS IMPORTANT POINTS FROM GOALS SECTION OR ACCEPTANCE CRITERIA IF NECESSARY -- {{ $json.output[0].content[0].text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1440,
+        -128
+      ],
+      "id": "78635c15-da7a-4e2d-be54-cb8367e9f99e",
+      "name": "Limiting PRD Size",
+      "credentials": {
+        "openAiApi": {
+          "id": "eZcoLayNM4SACHCy",
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Slack Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Meeting Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Meeting Data": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Transcript": {
+      "main": [
+        [
+          {
+            "node": "Mask PII",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Detailed Transcript Received",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mask PII": {
+      "main": [
+        [
+          {
+            "node": "Create Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Chunk": {
+      "main": [
+        [
+          {
+            "node": "Requirement Extraction Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Requirement Extraction Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Requirement Extraction Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Validate Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requirement Classification Agent": {
+      "main": [
+        [
+          {
+            "node": "PRD Generation Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Requirement Classification Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Requirement Classification Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PRD Generation Agent": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Chunk PRDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "PRD Generation Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "PRD Generation Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Chunk PRDs": {
+      "main": [
+        [
+          {
+            "node": "Generate Final PRD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Final PRD": {
+      "main": [
+        [
+          {
+            "node": "Limiting PRD Size",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Formatting": {
+      "main": [
+        [
+          {
+            "node": "Send PRD for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Slack Formatting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send PRD for Approval": {
+      "main": [
+        [
+          {
+            "node": "Save PRD Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requirement Extraction Agent": {
+      "main": [
+        [
+          {
+            "node": "Requirement Classification Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limiting PRD Size": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "33e687b6-3ab1-4eb3-9326-d06a5caf7be7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2d26ba9c1a9292fb737388a5cf74469274a3f2bca5900725376e9fe3ac245ad1"
+  },
+  "nodeGroups": [],
+  "id": "N47rkA3AaPLTEBOV",
+  "tags": []
+}
