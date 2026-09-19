@@ -1,0 +1,437 @@
+{
+  "name": "Travel Planner Multiagent",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        32,
+        208
+      ],
+      "id": "f520d515-28bf-4e29-9c1f-c03c4ebb0bb3",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "TaU7Pg3LOVxgzDpg",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "chatInput"
+            },
+            {
+              "name": "sessionId"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        0
+      ],
+      "id": "27f6c5b8-90c1-4e16-9e0f-b491ebe794bc",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "google_local",
+        "q": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Query__q_', `Search for popular sightseeing activities and things to do at the destination city and nearby.`, 'string') }}",
+        "location": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Location__location_', ` Fill in the destination city.`, 'string') }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApiTool",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        432
+      ],
+      "id": "b1050b78-d0dd-47a8-8ee6-e36dc46d067b",
+      "name": "Activities",
+      "credentials": {
+        "serpApi": {
+          "id": "fy2PfO4y8aXXWca3",
+          "name": "SerpApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "google_hotels",
+        "q": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Query__q_', `q parameter cannot be empty. Fill in with the destination city where we need to find hotels.`, 'string') }}",
+        "check_in_date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Check-in_Date__check_in_date_', `check_in_date cannot be in the past.`, 'string') }}",
+        "check_out_date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Check-out_Date__check_out_date_', `check_out_date should be greater than the check_in_date.`, 'string') }}",
+        "additionalFields": {
+          "hotel_class": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Hotel_Class__hotel_class_', `If we have the hotel star ratings, then include it here.`, 'string') }}"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApiTool",
+      "typeVersion": 1,
+      "position": [
+        704,
+        448
+      ],
+      "id": "3bba033e-5af7-48bb-9ffb-95bace7b7d98",
+      "name": "Hotels",
+      "credentials": {
+        "serpApi": {
+          "id": "fy2PfO4y8aXXWca3",
+          "name": "SerpApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "google_flights",
+        "departure_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Departure_airport_code___location_kgmid__departure_id_', `departure_id is a mandatory field. Fill in the airport code (or the nearest airport code) of the departure city`, 'string') }}",
+        "arrival_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Arrival_airport_code___location_kgmid__arrival_id_', `arrival_id is a mandatory field. Fill in the airport code (or the nearest airport) of the destination city`, 'string') }}",
+        "outbound_date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Outbound_Date__outbound_date_', `outbound_date is a mandatory field. Make sure it is not in the past.`, 'string') }}",
+        "return_date": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_Date__return_date_', `return_date is a mandatory field. Make sure it is not in the past and is greater than the outbound date.`, 'string') }}",
+        "additionalFields": {
+          "adults": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Number_of_Adults__adults_', ` Default value is 1. Fill in the number of adults if we have this information.`, 'number') }}"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApiTool",
+      "typeVersion": 1,
+      "position": [
+        400,
+        448
+      ],
+      "id": "d73a5785-f558-4def-8d58-15d52bd3d856",
+      "name": "Flights",
+      "credentials": {
+        "serpApi": {
+          "id": "fy2PfO4y8aXXWca3",
+          "name": "SerpApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are the Trip Planning Orchestrator.\n\nInput: Structured trip request (origin, destination, dates, travelers, budget, preferences).\n\nYOUR JOB:\n\nCall Flights Agent, Hotels Agent, and Activities Agent once each.\nEnsure outputs align with travel dates.\nCombine results into a structured itinerary.\nPresent a clean final plan.\n\nDo not deeply re-optimize domain outputs.\nDo not generate options yourself.\nDo not call agents multiple times unless critical data is missing.\nDo not explain internal reasoning\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9943669c-8bff-46df-b7da-ca494aecef53",
+      "name": "Travel Agent Orchestrator"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        432
+      ],
+      "id": "0ac3d80c-a7b7-4a5c-9a22-ecc8f594555d",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "TaU7Pg3LOVxgzDpg",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Flights Agent that can call other tools",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "You are a Flights Search Agent.\n\nInput: Origin, destination, dates, traveler count, flight preferences.\n\nUse the Flights tool once.\n\nGenerate 4–6 viable round-trip options.\nInclude a mix of non-stop and 1-stop (if relevant).\nInclude airline, departure/arrival times, duration, stops, and estimated total price.\n\nDo not explain reasoning\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 3,
+      "position": [
+        256,
+        256
+      ],
+      "id": "42fd6e52-10ef-4961-90c4-d81e15cde1ac",
+      "name": "Flights Agent"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Hotel Agent that can call other tools",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "You are a Hotels Search Agent.\n\nInput: Destination, check-in/out dates, travelers, hotel preferences.\n\nUse the Hotels tool once.\n\nGenerate 5-7 hotel options aligned with travel_style and budget.\nInclude rating, area, price per night, estimated total stay cost.\n\nAlign with travel_style and budget if provided.\n\nPrefer 4 star+ when budget allows.\n\nNo explanations.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 3,
+      "position": [
+        544,
+        256
+      ],
+      "id": "e12b6699-0806-4b8f-83d4-c700a97388cd",
+      "name": "Hotels Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        528,
+        448
+      ],
+      "id": "ba1f5ff6-c6ad-41ca-a7f7-e2ea74edcd2a",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "TaU7Pg3LOVxgzDpg",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Activities AI Agent that can call other tools",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "You are an Activities Agent.\n\nInput: Destination, trip duration, user preferences.\n\nUse the Activities tool and the Tavily Search tool once and consolidate the results.\n\nYOUR JOB IS TO:\nGenerate 8–12 activity options.\nInclude a mix of top attractions and unique/local experiences.\nGroup loosely by day (no strict optimization yet).\n\nNo explanations.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 3,
+      "position": [
+        864,
+        256
+      ],
+      "id": "3836e056-207a-488c-9a9a-e49e685d15e9",
+      "name": "Activities Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        432
+      ],
+      "id": "8fe23fb8-2754-4460-b53d-6f970b13ddb6",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "TaU7Pg3LOVxgzDpg",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "List me the top attractions in <DESTINATION_CITY> (instruction-style value for the model)"
+            },
+            {
+              "name": "include_answer",
+              "value": "basic"
+            },
+            {
+              "name": "api_key",
+              "value": "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"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        1184,
+        448
+      ],
+      "id": "4b9a55f6-f89f-4913-b342-25598cceea1b",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Travel Agent Orchestrator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Travel Agent Orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activities": {
+      "ai_tool": [
+        [
+          {
+            "node": "Activities Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hotels": {
+      "ai_tool": [
+        [
+          {
+            "node": "Hotels Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flights": {
+      "ai_tool": [
+        [
+          {
+            "node": "Flights Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Travel Agent Orchestrator": {
+      "main": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Flights Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flights Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "Travel Agent Orchestrator",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hotels Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "Travel Agent Orchestrator",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Hotels Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activities Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "Travel Agent Orchestrator",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Activities Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "Activities Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "5013b326-062d-4f18-b222-852b99211654",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "904aef929511abcfe7685ee755278ec191062d805d7b4028176772f2252089cc"
+  },
+  "nodeGroups": [],
+  "id": "EyN1IltQKftOjcZf",
+  "tags": []
+}

@@ -1,0 +1,179 @@
+{
+  "name": "MultiAgent Flow Final",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e1b65203-eea7-4f50-b84a-d8d4850c7578",
+      "name": "When chat message received",
+      "webhookId": "2d98ea20-e040-4100-a027-547760d13706"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        80,
+        208
+      ],
+      "id": "db7a223e-4833-4899-a9e9-89bd4f70ff26",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "TaU7Pg3LOVxgzDpg",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        224,
+        208
+      ],
+      "id": "3a47c4eb-2e50-471e-be2e-13067bd655ae",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=You are a Travel AI assistant. Current System Time is {{ $now }}.\n\nYour job is to receive travel requests from the user.\n\nExtract travel details and update the date to YY-MM-DD format\n\nCall the Travel Planner Multiagent workflow with structured parameters.\n\nSummarize the returned itinerary.\n\nRespond back in simple and friendly bullet points.\n\nYou do not create the itinerary yourself.\n\nYou must always call the Travel Planner Multiagent workflow when a travel planning request is detected.\n\nIf you run into any errors just respond back with \"Unexpected Error encountered. Please retry at a later time\".\n\nIf the underlying Travel Planner Multiagent workflow returns a user error, send that error back to the user.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "1e022518-8523-4534-9003-a131c58dbcde",
+      "name": "User Triage Agent"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "EyN1IltQKftOjcZf",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EyN1IltQKftOjcZf",
+          "cachedResultName": "Travel Planner Multiagent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('When chat message received').item.json.chatInput }}",
+            "sessionId": "={{ $('When chat message received').item.json.sessionId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "chatInput",
+              "displayName": "chatInput",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "sessionId",
+              "displayName": "sessionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        496,
+        208
+      ],
+      "id": "11a2129a-6221-456b-b2f1-4f71be426f05",
+      "name": "Call 'Travel Planner Multiagent'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "User Triage Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "User Triage Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "User Triage Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Travel Planner Multiagent'": {
+      "ai_tool": [
+        [
+          {
+            "node": "User Triage Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "94a13838-c336-498f-84b0-7fdc22732fa0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "904aef929511abcfe7685ee755278ec191062d805d7b4028176772f2252089cc"
+  },
+  "nodeGroups": [],
+  "id": "U7IJe6C0nGoNlRhE",
+  "tags": []
+}
