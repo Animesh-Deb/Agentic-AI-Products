@@ -1,15 +1,45 @@
-1. Healthcare AI — Early Patient Deterioration Detection
+Meeting: Healthcare AI — Early Patient Deterioration Detection
 
 Product Manager: We want to build an AI-powered system that can detect early signs of patient deterioration before the condition becomes critical.
 
 Doctor: The system should monitor changes in vital signs, lab results, medication patterns, and recent clinical observations.
 
-Nurse Manager: False alarms are a major concern. Doctors and nurses should be able to review an alert before any clinical action is taken.
+Nurse Manager: False alarms are a major concern. The system should allow doctors and nurses to review an alert before any clinical action is taken.
 
-Product Manager: The system should provide a confidence score and explain which patient indicators contributed to the alert.
+Product Manager: The system should provide a confidence score for each alert.
+
+Product Manager: The system should explain which patient indicators contributed to the alert.
 
 Doctor: The hospital’s electronic health record system should be the primary source of patient information.
 
 Nurse Manager: For the MVP, the system should recommend that the care team review the patient rather than automatically change treatment.
 
-Product Manager: Agreed. Human clinical approval must remain mandatory.
+Product Manager: Human clinical approval must remain mandatory before any clinical action is taken.
+
+Doctor: The system should evaluate trends in vital signs over time, rather than relying only on a single measurement.
+
+Nurse Manager: Alerts should clearly identify the patient and the indicators that triggered the deterioration warning.
+
+Doctor: The system should consider relevant lab result trends when assessing deterioration risk.
+
+Doctor: Recent medication patterns should be considered when identifying potential deterioration.
+
+Nurse Manager: Recent clinical observations documented by the care team should also be considered.
+
+Product Manager: The system should maintain a record of generated alerts and the associated confidence scores.
+
+Nurse Manager: The care team should be able to acknowledge an alert after reviewing it.
+
+Doctor: The system should allow clinicians to document their decision after reviewing an alert.
+
+Nurse Manager: We need to distinguish high-priority alerts from lower-priority alerts so the care team can prioritize its review.
+
+Product Manager: The system should provide the care team with the patient indicators and supporting information needed to assess each alert.
+
+Doctor: The system should use patient information available in the hospital’s electronic health record rather than requiring clinicians to manually enter the same information again.
+
+Nurse Manager: The system should avoid repeatedly generating the same alert for an unchanged patient condition.
+
+Product Manager: The system should support retrospective review of alerts to help the hospital assess whether the detection system is performing as expected.
+
+Doctor: The system must not independently diagnose a patient or automatically change treatment. Clinical decisions must remain with qualified healthcare professionals.

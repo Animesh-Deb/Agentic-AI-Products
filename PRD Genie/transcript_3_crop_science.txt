@@ -1,0 +1,37 @@
+Meeting: Crop Science AI — Early Crop Disease Detection
+
+Product Manager: We want to build an AI-powered system that can detect early signs of crop disease before significant damage occurs.
+
+Agronomist: The system should analyze crop images to identify visible signs of potential disease.
+
+Agronomist: The system should consider current weather conditions when assessing crop disease risk.
+
+Agronomist: Soil information should be considered when identifying potential crop disease.
+
+Agronomist: The system should use historical disease patterns to help identify potential disease risks.
+
+Farm Manager: False positives are a major concern. Farmers should be able to review an alert before applying any treatment or taking corrective action.
+
+Product Manager: The system should provide a confidence score for each disease alert.
+
+Product Manager: The system should explain which crop or environmental indicators contributed to the disease alert.
+
+Agronomist: Field images should be a primary source of crop information.
+
+Agronomist: Farm management data should also be a primary source of crop information.
+
+Farm Manager: For the MVP, the system should recommend that a farmer or agronomist inspect the affected area rather than automatically recommend pesticide application.
+
+Product Manager: Human review must remain mandatory before any treatment or corrective action is taken based on an alert.
+
+Agronomist: The system should identify the affected crop or field area associated with each disease alert.
+
+Farm Manager: Alerts should indicate the potential disease detected so that farmers can understand what needs further inspection.
+
+Agronomist: The system should consider changes in weather conditions when reassessing disease risk for a field.
+
+Farm Manager: Farmers should be able to acknowledge an alert after reviewing it.
+
+Product Manager: The system should maintain a record of generated disease alerts and their associated confidence scores for subsequent review.
+
+Agronomist: The system must not automatically apply pesticides or initiate treatment. Decisions about corrective action must remain with the farmer or qualified agronomist.

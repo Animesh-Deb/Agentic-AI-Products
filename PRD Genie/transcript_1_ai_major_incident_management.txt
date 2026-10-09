@@ -1,0 +1,90 @@
+# Meeting: AI Major Incident Management Platform — Scoping Call
+
+**Attendees**
+- Priya — Engineering Lead
+- Raj — Operations Manager
+- Meera — Support Lead
+- Karan — Sales Stakeholder
+
+**Purpose:** Define stakeholder requirements, operational constraints, and pilot scope for an AI-assisted Major Incident Management Platform.
+
+## Stakeholder Discussion and Requirements
+
+
+
+**Priya (Engineering Lead):** The platform must automatically detect potential major incidents directly from monitoring alerts. Users must not need to manually flag an incident to initiate detection.
+
+
+**Raj (Operations Manager):** When a major incident is detected, the platform must automatically create an incident ticket immediately.
+
+
+
+**Raj (Operations Manager):** Every automatically created incident ticket must be assigned a severity level from P1 through P4.
+
+
+
+**Meera (Support Lead):** The platform must automatically notify the on-call engineer through both Slack and PagerDuty when a major incident is detected.
+
+
+
+**Priya (Engineering Lead):** The platform must automatically create a dedicated Slack channel for each incident.
+
+
+
+**Raj (Operations Manager):** The public status page must be updated in real time as soon as an incident's severity is set.
+
+
+
+**Karan (Sales Stakeholder):** Every action taken during incident management must be recorded in a fully traceable timeline and audit log.
+
+
+**Priya (Engineering Lead):** For P1 incidents, the platform must automatically schedule a video conference bridge and include the appropriate responders.
+
+
+
+**Meera (Support Lead):** After mitigation, the platform must generate a root cause analysis (RCA) template so the team does not have to start with a blank document.
+
+
+
+**Raj (Operations Manager):** The platform must automatically draft a post-incident report using the recorded incident timeline data.
+
+
+
+**Priya (Engineering Lead):** The platform must display an SLA breach countdown timer that is visible to the entire incident response team.
+
+
+
+**Karan (Sales Stakeholder):** If an incident is not acknowledged within a configured time threshold, the platform must automatically escalate it according to the escalation matrix. The exact acknowledgement threshold must be agreed upon during requirements refinement.
+
+
+
+**Raj (Operations Manager):** The platform must integrate with Jira to avoid duplicated incident tracking.
+
+
+
+**Meera (Support Lead):** The platform must automatically send customer communication using appropriate templates when an incident changes to one of these statuses: detected, mitigating, or resolved.
+
+
+
+**Karan (Sales Stakeholder):** The platform must provide an executive dashboard that presents high-level incident information in clear, non-technical language.
+
+
+**Priya (Engineering Lead):** Users must be able to search for and retrieve historical incidents.
+
+
+**Raj (Operations Manager):** When a new incident is created, the platform should suggest similar historical incidents to give responders relevant context quickly.
+
+
+**Meera (Support Lead):** The platform must automatically identify and notify the relevant stakeholders based on the affected service rather than using the same notification list for every incident.
+
+
+**Priya (Engineering Lead):** The platform must require completion of an incident closure checklist before an incident can be marked as resolved.
+
+
+**Raj (Operations Manager):** The platform must provide a metrics dashboard that tracks Mean Time to Resolve (MTTR) and Mean Time to Acknowledge (MTTA) over time.
+
+## Technical and Operational Constraints
+
+ The platform must integrate with the organization's existing Datadog setup rather than replace it.
+ The platform must never have direct write access to production systems.
+
